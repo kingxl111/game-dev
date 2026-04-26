@@ -1,0 +1,51 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+[Ll]ocal[Cc]ache/
+
+# IDE
+.vs/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.VC.vcproj
+*.VC.VC.opendb
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+*~
+
+# Misc
+*.tmp
+*.log
+sysinfo.txt
+crash.log
+*.apk
+*.aab
+*.app
+*.exe
+*.zip
+
+# Только если не хотите хранить сгенерированные ассеты в репо:
+# /[Aa]ssets/[Ss]treamingAssets/aa.meta
+# /[Aa]ssets/[Ss]treamingAssets/aa/*
