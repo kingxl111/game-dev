@@ -12,6 +12,8 @@ namespace ReactorBreach.Enemies
     public abstract class EnemyBase : MonoBehaviour, IEnemy
     {
         [SerializeField] protected EnemyConfig Config;
+        [SerializeField] private float _objectPushRadius = 0.9f;
+        [SerializeField] private float _objectPushForce = 8f;
 
         protected NavMeshAgent Agent;
         protected EnemyStateMachine FSM;
@@ -20,6 +22,7 @@ namespace ReactorBreach.Enemies
         private bool _isNeutralized;
         private float _slowEndTime;
         private bool _isStuck;
+        private readonly Collider[] _pushHits = new Collider[16];
 
         // Для FSM — таймер нейтрализации через сварку
         public float WeldedTimer { get; set; }
@@ -150,6 +153,8 @@ namespace ReactorBreach.Enemies
                     playerCollider, pc.transform.position, pc.transform.rotation,
                     out _, out _))
                 hp.TakeDamage(5000f);
+
+            PushNearbyObjects();
         }
 
         // ── Physics damage ────────────────────────────────────────────────
@@ -171,6 +176,29 @@ namespace ReactorBreach.Enemies
                 // Vibration from impact
                 if (impulse > Data.GameConstants.ImpactVibrationThreshold)
                     VibrationSystem.Emit(transform.position, Data.GameConstants.VibrationRadiusImpact);
+            }
+        }
+
+        private void PushNearbyObjects()
+        {
+            if (_objectPushForce <= 0f || _objectPushRadius <= 0f) return;
+
+            int count = Physics.OverlapSphereNonAlloc(transform.position + Vector3.up * 0.8f, _objectPushRadius, _pushHits);
+            for (int i = 0; i < count; i++)
+            {
+                var col = _pushHits[i];
+                if (col == null) continue;
+                var rb = col.attachedRigidbody;
+                if (rb == null || rb.isKinematic) continue;
+                if (rb.gameObject.layer == GameConstants.LayerStatic || rb.gameObject.layer == GameConstants.LayerEnemy) continue;
+
+                Vector3 dir = rb.worldCenterOfMass - transform.position;
+                dir.y = 0f;
+                if (dir.sqrMagnitude < 0.01f)
+                    dir = transform.forward;
+
+                rb.WakeUp();
+                rb.AddForce(dir.normalized * _objectPushForce, ForceMode.Force);
             }
         }
     }

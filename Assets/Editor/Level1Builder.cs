@@ -37,6 +37,9 @@ namespace ReactorBreach.EditorTools
         private const string ScenePath        = "Assets/Scenes/Level_01_Tutorial.unity";
         private const string SOFolder         = "Assets/ScriptableObjects/Instances";
         private const string InputActionsPath = "Assets/ScriptableObjects/Instances/PlayerActions.inputactions";
+        private const string MutantSkin1Path  = "Assets/MonsterMutant 7/Prefab/Base mesh MonsterMutant7 skin1.prefab";
+        private const string MutantSkin2Path  = "Assets/MonsterMutant 7/Prefab/Base mesh MonsterMutant7 skin2.prefab";
+        private const string MutantSkin4Path  = "Assets/MonsterMutant 7/Prefab/Base mesh MonsterMutant7 skin4.prefab";
 
         // Размеры и координаты комнат уровня
         private const float WallHeight   = 8.2f;
@@ -1401,7 +1404,6 @@ namespace ReactorBreach.EditorTools
             return trig;
         }
 
-        /// <summary>Враг-Ползун с FSM, NavMeshAgent и капсульной визуализацией.</summary>
         private static void CreateEnemy(string name, EnemyConfig config, Vector3 pos,
             bool visionGateUntilHintDismissed = false)
         {
@@ -1410,24 +1412,7 @@ namespace ReactorBreach.EditorTools
             go.layer = GameConstants.LayerEnemy;
             go.transform.position = pos;
 
-            // Визуалка — капсула + «глаз»
-            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            body.name = $"{name}_Body";
-            body.transform.SetParent(go.transform, false);
-            body.transform.localPosition = new Vector3(0f, 1.0f, 0f);
-            body.transform.localScale    = new Vector3(0.9f, 0.9f, 0.9f);
-            Object.DestroyImmediate(body.GetComponent<Collider>());
-            Paint(body, new Color(0.18f, 0.05f, 0.05f), metallic: 0.30f, smoothness: 0.55f,
-                  emission: new Color(0.6f, 0.05f, 0.05f), emissionIntensity: 0.4f);
-
-            var eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            eye.name = $"{name}_Eye";
-            eye.transform.SetParent(body.transform, false);
-            eye.transform.localPosition = new Vector3(0f, 0.55f, -0.35f);
-            eye.transform.localScale    = Vector3.one * 0.35f;
-            Object.DestroyImmediate(eye.GetComponent<Collider>());
-            Paint(eye, new Color(1f, 0.85f, 0.2f), metallic: 0f, smoothness: 0.95f,
-                  emission: new Color(1f, 0.85f, 0.2f), emissionIntensity: 2.2f);
+            Transform visualRoot = CreateEnemyVisual(name, go.transform, out Transform eye);
 
             // Коллайдер для столкновений (capsule)
             var cap = go.AddComponent<CapsuleCollider>();
@@ -1466,7 +1451,65 @@ namespace ReactorBreach.EditorTools
             }
 
             var aimEyes = go.AddComponent<EnemyAimEyes>();
-            SetField(aimEyes, "_eye", eye.transform);
+            SetField(aimEyes, "_eye", eye);
+            SetField(aimEyes, "_faceRoot", visualRoot);
+
+            var animLock = go.AddComponent<EnemyForceAnimation>();
+            SetStringField(animLock, "_stateName", "walk4");
+            SetField(animLock, "_speed", 0.9f);
+        }
+
+        private static Transform CreateEnemyVisual(string enemyName, Transform parent, out Transform eye)
+        {
+            string prefabPath = enemyName.Contains("Stalker") || enemyName.Contains("Floor1")
+                ? MutantSkin4Path
+                : enemyName.Contains("Floor3")
+                    ? MutantSkin1Path
+                    : MutantSkin2Path;
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab != null)
+            {
+                var visual = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+                visual.name = $"{enemyName}_MonsterMutant7";
+                visual.transform.localPosition = Vector3.zero;
+                visual.transform.localRotation = Quaternion.identity;
+                visual.transform.localScale = Vector3.one;
+                SetLayerRecursively(visual, GameConstants.LayerEnemy);
+
+                var eyeAnchor = new GameObject($"{enemyName}_EyeAnchor");
+                eyeAnchor.transform.SetParent(visual.transform, false);
+                eyeAnchor.transform.localPosition = new Vector3(0f, 1.55f, -0.35f);
+                eye = eyeAnchor.transform;
+                return visual.transform;
+            }
+
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = $"{enemyName}_Body";
+            body.transform.SetParent(parent, false);
+            body.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+            body.transform.localScale = new Vector3(0.9f, 0.9f, 0.9f);
+            Object.DestroyImmediate(body.GetComponent<Collider>());
+            Paint(body, new Color(0.18f, 0.05f, 0.05f), metallic: 0.30f, smoothness: 0.55f,
+                  emission: new Color(0.6f, 0.05f, 0.05f), emissionIntensity: 0.4f);
+
+            var eyeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            eyeObject.name = $"{enemyName}_Eye";
+            eyeObject.transform.SetParent(body.transform, false);
+            eyeObject.transform.localPosition = new Vector3(0f, 0.55f, -0.35f);
+            eyeObject.transform.localScale = Vector3.one * 0.35f;
+            Object.DestroyImmediate(eyeObject.GetComponent<Collider>());
+            Paint(eyeObject, new Color(1f, 0.85f, 0.2f), metallic: 0f, smoothness: 0.95f,
+                  emission: new Color(1f, 0.85f, 0.2f), emissionIntensity: 2.2f);
+            eye = eyeObject.transform;
+            return body.transform;
+        }
+
+        private static void SetLayerRecursively(GameObject go, int layer)
+        {
+            go.layer = layer;
+            foreach (Transform child in go.transform)
+                SetLayerRecursively(child.gameObject, layer);
         }
 
         /// <summary>Сборка NavMesh из всей геометрии сцены.</summary>
